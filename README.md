@@ -4,7 +4,7 @@ This Msc. project constitute the main part of my thesis at Imperial College Lond
 To use this repo, make sure that Python and Matlab are installed on your machine. 
 Also, you will have to download SPM12, a fMRI data preprocessing Toolbox : https://www.fil.ion.ucl.ac.uk/spm/software/spm12/. 
 
-The used packages can be installed via pip using the following command line: 
+The packages can be installed via pip using the following command line: 
 
 ```bash
 pip install -r requirements.txt
