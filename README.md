@@ -7,7 +7,8 @@ To download the data and unzip data for each phenomenon (e.g. DEPRESSION) execut
 
 ```bash
 bash download_depression_data.sh
+```
 
 ```matlab
 find DEPRESSION -type f -name "*.gz" -exec gunzip -f {} \;
-
+```
