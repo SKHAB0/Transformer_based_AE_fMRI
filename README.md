@@ -3,8 +3,11 @@ This Msc. project constitute the main part of my thesis at Imperial College Lond
 
 ## Download the data
 
-To download the data for each phenomenon (e.g. DEPRESSION) execute the following command : 
+To download the data and unzip data for each phenomenon (e.g. DEPRESSION) execute the following command : 
 
 ```bash
 bash download_depression_data.sh
+
+```matlab
+find DEPRESSION -type f -name "*.gz" -exec gunzip -f {} \;
 
