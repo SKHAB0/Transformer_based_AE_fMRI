@@ -18,13 +18,15 @@ def load_depression_data(batch_size = 32):
     avg_BOLD_signals = {}
     sessions = {}
 
-    for subject in tqdm(subjects.participant_id):
+    for subject in tqdm(subjects.participant_id[:2]):
         subfolders = os.listdir('DEPRESSION/'+subject)
         sessions[subject] = sorted([subfolder for subfolder in subfolders if subfolder.startswith('ses')])
-        session = sessions[subject][0]
-        for n_echo in range(1,5):
-            path = 'DEPRESSION/'+subject+'/'+session+'/BOLD_time_series_echo-'+str(n_echo)+'.mat'
-            BOLD_signals[subject+'_echo-'+str(n_echo)] = scipy.io.loadmat(path)
+        for session in sessions[subject]:
+        #session = sessions[subject][0]
+            print(session)
+            for n_echo in range(1,5):
+                path = 'DEPRESSION/'+subject+'/'+session+'/BOLD_time_series_echo-'+str(n_echo)+'_166.mat'
+                BOLD_signals[subject+'_' + session + '_echo-'+str(n_echo)] = scipy.io.loadmat(path)
 
     labels = list(BOLD_signals.keys())
 
@@ -40,20 +42,23 @@ def load_depression_data(batch_size = 32):
 
     results = dict(zip(sessions.keys(), map(is_depressed, sessions.values())))
 
-    # Convert to pandas DataFrame
-    df = pd.DataFrame(list(results.items()), columns=['Subject', 'Is_Depressed'])
-    df = df.Is_Depressed#.replace({True: 1, False: 0})
-    #print(df)
-    df = [item for item in df for _ in range(4)]
-    labels_tensor = torch.tensor(df)
-    #print(labels_tensor)
+    output_vector = []
+
+    for sub, ses_list in sessions.items():
+        bool_value = results.get(sub)
+        if bool_value is None:
+            continue
+        for _ in ses_list:
+            output_vector.extend([bool_value] * 4)
+
+    labels_tensor = torch.tensor(output_vector)
 
     error_voxels = []
 
     #Formate to tensor stucture
     for id in tqdm(labels):
-        a = np.empty((116, 196))
-        for voxel in range(116):
+        a = np.empty((166, 196))
+        for voxel in range(166):
             mean_signal = np.mean(BOLD_signals[id][voxel], axis=-1)
             if mean_signal.shape[0] == 0:
                 error_voxels.append((id, voxel))
@@ -75,17 +80,17 @@ def load_depression_data(batch_size = 32):
     data_normalized = (data_array - means) / (stds + 1e-8) #1e-8 is added to avoid dividing by zero 
     data_normalized = np.swapaxes(data_normalized, 1, 2) #So that the time dimension remains the same and 116-length vectors are presented as input to the model
 
-    #train_test_split
 
     train_data, test_data, train_labels, test_labels = train_test_split(data_normalized, labels_tensor, test_size=0.2, random_state=42, stratify=labels_tensor)
     train_data, val_data, train_labels, val_labels = train_test_split(train_data, train_labels, test_size=0.25, random_state=42, stratify=train_labels)
 
-    #print(train_labels)
     train_loader = DataLoader(TensorDataset(torch.tensor(train_data, dtype=torch.float32), train_labels), batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(TensorDataset(torch.tensor(val_data, dtype=torch.float32), val_labels), batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(TensorDataset(torch.tensor(test_data, dtype=torch.float32), test_labels), batch_size=batch_size, shuffle=True)
 
     #Creating the objects 
+    globals()['BOLD_signals'] = data_array
+    globals()['labels'] = labels_tensor
     globals()['train_loader'] = train_loader
     globals()['val_loader'] = val_loader
     globals()['test_loader'] = test_loader
