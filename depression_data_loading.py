@@ -18,20 +18,7 @@ def load_depression_data(batch_size = 32):
     avg_BOLD_signals = {}
     sessions = {}
 
-    for subject in tqdm(subjects.participant_id[:2]):
-        subfolders = os.listdir('DEPRESSION/'+subject)
-        sessions[subject] = sorted([subfolder for subfolder in subfolders if subfolder.startswith('ses')])
-        for session in sessions[subject]:
-        #session = sessions[subject][0]
-            print(session)
-            for n_echo in range(1,5):
-                path = 'DEPRESSION/'+subject+'/'+session+'/BOLD_time_series_echo-'+str(n_echo)+'_166.mat'
-                BOLD_signals[subject+'_' + session + '_echo-'+str(n_echo)] = scipy.io.loadmat(path)
-
-    labels = list(BOLD_signals.keys())
-
-    for id in labels :
-        BOLD_signals[id] = BOLD_signals[id]['all_time_series'][0]
+    labels = []
 
     #Auxiliary function
     def is_depressed(sess):
@@ -40,30 +27,43 @@ def load_depression_data(batch_size = 32):
                 return True
         return False
 
-    results = dict(zip(sessions.keys(), map(is_depressed, sessions.values())))
+    for subject in tqdm(subjects.participant_id):
+        subfolders = os.listdir('DEPRESSION/'+subject)
+        sessions[subject] = sorted([subfolder for subfolder in subfolders if subfolder.startswith('ses')])
+        bool = is_depressed(sessions[subject])
+        for session in sessions[subject]:
+        #session = sessions[subject][0]
+            #print(session)
+            for n_echo in range(1,5):
+                path = 'DEPRESSION/'+subject+'/'+session+'/BOLD_time_series_echo-'+str(n_echo)+'_166.mat'
+                try: 
+                    BOLD_signals[subject+'_' + session + '_echo-'+str(n_echo)] = scipy.io.loadmat(path)
+                    labels.append(bool)
+                except:
+                    print('Error loading file: ', path)
+                    continue
 
-    output_vector = []
+    keys = list(BOLD_signals.keys())
 
-    for sub, ses_list in sessions.items():
-        bool_value = results.get(sub)
-        if bool_value is None:
-            continue
-        for _ in ses_list:
-            output_vector.extend([bool_value] * 4)
+    for id in keys :
+        BOLD_signals[id] = BOLD_signals[id]['all_time_series'][0]
 
-    labels_tensor = torch.tensor(output_vector)
+    #results = dict(zip(sessions.keys(), map(is_depressed, sessions.values())))
+
+    labels_tensor = torch.tensor(labels)
 
     error_voxels = []
 
     #Formate to tensor stucture
-    for id in tqdm(labels):
+    for id in tqdm(keys):
         a = np.empty((166, 196))
         for voxel in range(166):
             mean_signal = np.mean(BOLD_signals[id][voxel], axis=-1)
-            if mean_signal.shape[0] == 0:
+            try : 
+                a[voxel] = mean_signal
+            except:
                 error_voxels.append((id, voxel))
-                continue  # Skip this iteration and move to the next voxel
-            a[voxel] = mean_signal
+                continue
         avg_BOLD_signals[id] = a
     #Now, avg_BOLD_signals is a dictionary containing the average BOLD signals 
     # for each subject at each voxel (each row represents a voxel)
