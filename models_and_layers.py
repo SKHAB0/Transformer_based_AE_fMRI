@@ -264,15 +264,15 @@ class Autocorr_TransformerBlock(nn.Module):
 
         self.feed_forward_projection = nn.Sequential(
             nn.Linear(embed_size, forward_expansion * embed_size), # Dimension: [forward_expansion * embed_size]
-            Permute(0, 2, 1), # Permute dimensions if needed
-            nn.Conv1d(forward_expansion * embed_size, intermediate_dim, kernel_size=kernel_size, bias=False, padding=padding),
+            #Permute(0, 2, 1), # Permute dimensions if needed
+            #nn.Conv1d(forward_expansion * embed_size, intermediate_dim, kernel_size=kernel_size, bias=False, padding=padding),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Conv1d(intermediate_dim, dim_output, kernel_size=kernel_size, bias=False, padding=padding), 
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            Permute(0, 2, 1), # Permute back to original dimensions if needed
-            nn.Linear(dim_output, dim_output) # Dimension: [dim_output]
+            #nn.Conv1d(intermediate_dim, dim_output, kernel_size=kernel_size, bias=False, padding=padding), 
+            #nn.ReLU(),
+            #nn.Dropout(dropout),
+            #Permute(0, 2, 1), # Permute back to original dimensions if needed
+            nn.Linear(forward_expansion * embed_size, dim_output) # Dimension: [dim_output]
         )
         #self.norm = LayerNorm_seasonal(embed_size)
 
@@ -355,3 +355,214 @@ class Autocorr_TransformerAutoencoder(nn.Module):
         encoded_x = self.encoder(x, mask) # Passing data through encoder
         return encoded_x
 
+class TransformerBlock(nn.Module): 
+    def __init__(self, embed_size, heads, forward_expansion, dim_output, kernel_size = 5, dropout=0.5):
+        super(TransformerBlock, self).__init__()
+
+        self.attention = MultiheadAttention(embed_size, heads)
+        self.dropout = nn.Dropout(dropout)
+        self.feed_forward = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion * embed_size),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(forward_expansion * embed_size, embed_size)
+        )
+
+        self.normalization = nn.LayerNorm(embed_size)
+
+        self.feed_forward_projection = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion * embed_size), # Dimension: [forward_expansion * embed_size]
+            #Permute(0, 2, 1), # Permute dimensions if needed
+            #nn.Conv1d(forward_expansion * embed_size, intermediate_dim, kernel_size=kernel_size, bias=False, padding=padding),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            #nn.Conv1d(intermediate_dim, dim_output, kernel_size=kernel_size, bias=False, padding=padding), 
+            #nn.ReLU(),
+            #nn.Dropout(dropout),
+            #Permute(0, 2, 1), # Permute back to original dimensions if needed
+            nn.Linear(forward_expansion * embed_size, dim_output) # Dimension: [dim_output]
+        )
+        #self.norm = LayerNorm_seasonal(embed_size)
+
+    def forward(self, x, mask):
+        attention_out = self.attention(x, x, x, mask)
+        x = x + self.dropout(attention_out)
+        y = x
+        y = self.feed_forward(y)
+        sum = x+y
+        sum = self.normalization(sum)
+        out = self.feed_forward_projection(sum)
+        return out
+
+class Transformer_encoder(nn.Module):
+    def __init__(self, input_dim, intermediate_dims, heads, dropout, forward_expansion):
+        super(Transformer_encoder, self).__init__()
+
+        # Create a list of dimensions including the input and final output dimensions
+        dims = [input_dim] + intermediate_dims 
+        
+        # Create the stacked Transformer blocks
+        self.blocks = nn.ModuleList([
+            TransformerBlock(
+                embed_size=dims[i],
+                heads=heads,
+                dropout=dropout,
+                forward_expansion=forward_expansion,
+                dim_output=dims[i+1]
+            )
+            for i in range(len(dims) - 1)
+        ])
+
+    def forward(self, x, mask = None):
+        for block in self.blocks:
+            x = block(x, mask)
+        return x
+
+class Standard_Transformer_Autoencoder(nn.Module):
+    def __init__(self, input_dim, intermediate_dims, heads, dropout, forward_expansion, kernel_size = 5):
+        super(Standard_Transformer_Autoencoder, self).__init__()
+
+        # Split the intermediate_dims into two equal parts for the encoder and decoder
+
+        encoder_dims = intermediate_dims
+        decoder_dims = intermediate_dims[::-1]+[input_dim]  # Reverse the decoder dimensions
+
+        self.encoder = Transformer_encoder(
+            input_dim=input_dim,
+            intermediate_dims=encoder_dims,
+            heads=heads,
+            dropout=dropout,
+            forward_expansion=forward_expansion
+        )
+
+        # Note that the input dimension for the decoder is the last dimension of the encoder
+        self.decoder = Transformer_encoder(
+            input_dim=encoder_dims[1::][-1], #Every dimension but the first one - dimension of the latent space
+            intermediate_dims=decoder_dims,
+            heads=heads,
+            dropout=dropout,
+            forward_expansion=forward_expansion
+        )
+
+        self.latent_dim = intermediate_dims[-1]
+
+        #Physical loss parameters 
+        self.a = nn.Parameter(torch.tensor(0.1))  
+        self.b = nn.Parameter(torch.tensor(0.1))
+        self.c = nn.Parameter(torch.tensor(0.1))
+        self.K = nn.Parameter(torch.tensor(0.1))
+
+    def forward(self, x, mask):
+        encoded_x = self.encoder(x, mask) #encoding
+        output = self.decoder(encoded_x, mask) #decoding
+        return output, encoded_x
+    
+    def encode(self, x, mask):
+        encoded_x = self.encoder(x, mask) # Passing data through encoder
+        return encoded_x
+
+class Decomposition_TransformerBlock(nn.Module): 
+    def __init__(self, embed_size, heads, forward_expansion, dim_output, kernel_size = 5, dropout=0.5):
+        super(Decomposition_TransformerBlock, self).__init__()
+
+        self.attention = MultiheadAttention(embed_size, heads)
+        self.dropout = nn.Dropout(dropout)
+        self.feed_forward = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion * embed_size),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(forward_expansion * embed_size, embed_size)
+        )
+
+        self.decomposition(self, kernel_size=kernel_size)
+        self.feed_forward_projection = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion * embed_size), # Dimension: [forward_expansion * embed_size]
+            #Permute(0, 2, 1), # Permute dimensions if needed
+            #nn.Conv1d(forward_expansion * embed_size, intermediate_dim, kernel_size=kernel_size, bias=False, padding=padding),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            #nn.Conv1d(intermediate_dim, dim_output, kernel_size=kernel_size, bias=False, padding=padding), 
+            #nn.ReLU(),
+            #nn.Dropout(dropout),
+            #Permute(0, 2, 1), # Permute back to original dimensions if needed
+            nn.Linear(forward_expansion * embed_size, dim_output) # Dimension: [dim_output]
+        )
+        #self.norm = LayerNorm_seasonal(embed_size)
+
+    def forward(self, x, mask):
+        attention_out = self.attention(x, x, x, mask)
+        x = x + self.dropout(attention_out)
+        y, _ = self.decomposition(x)
+        z = y
+        z = self.feed_forward(z)
+        sum = y+z
+        sum, _ = self.decomposition(sum)
+        out = self.feed_forward_projection(sum)
+        return out
+
+class Decomposition_Transformer_encoder(nn.Module):
+    def __init__(self, input_dim, intermediate_dims, heads, dropout, forward_expansion):
+        super(Decomposition_Transformer_encoder, self).__init__()
+
+        # Create a list of dimensions including the input and final output dimensions
+        dims = [input_dim] + intermediate_dims 
+        
+        # Create the stacked Transformer blocks
+        self.blocks = nn.ModuleList([
+            Decomposition_TransformerBlock(
+                embed_size=dims[i],
+                heads=heads,
+                dropout=dropout,
+                forward_expansion=forward_expansion,
+                dim_output=dims[i+1]
+            )
+            for i in range(len(dims) - 1)
+        ])
+
+    def forward(self, x, mask = None):
+        for block in self.blocks:
+            x = block(x, mask)
+        return x
+    
+class Decomposition_Transformer_Autoencoder(nn.Module):
+    def __init__(self, input_dim, intermediate_dims, heads, dropout, forward_expansion, kernel_size = 5):
+        super(Decomposition_Transformer_Autoencoder, self).__init__()
+
+        # Split the intermediate_dims into two equal parts for the encoder and decoder
+
+        encoder_dims = intermediate_dims
+        decoder_dims = intermediate_dims[::-1]+[input_dim]  # Reverse the decoder dimensions
+
+        self.encoder = Decomposition_Transformer_encoder(
+            input_dim=input_dim,
+            intermediate_dims=encoder_dims,
+            heads=heads,
+            dropout=dropout,
+            forward_expansion=forward_expansion
+        )
+
+        # Note that the input dimension for the decoder is the last dimension of the encoder
+        self.decoder = Decomposition_Transformer_encoder(
+            input_dim=encoder_dims[1::][-1], #Every dimension but the first one - dimension of the latent space
+            intermediate_dims=decoder_dims,
+            heads=heads,
+            dropout=dropout,
+            forward_expansion=forward_expansion
+        )
+
+        self.latent_dim = intermediate_dims[-1]
+
+        #Physical loss parameters 
+        self.a = nn.Parameter(torch.tensor(0.1))  
+        self.b = nn.Parameter(torch.tensor(0.1))
+        self.c = nn.Parameter(torch.tensor(0.1))
+        self.K = nn.Parameter(torch.tensor(0.1))
+
+    def forward(self, x, mask):
+        encoded_x = self.encoder(x, mask) #encoding
+        output = self.decoder(encoded_x, mask) #decoding
+        return output, encoded_x
+    
+    def encode(self, x, mask):
+        encoded_x = self.encoder(x, mask) # Passing data through encoder
+        return encoded_x
