@@ -25,16 +25,20 @@ from matplotlib.colors import LinearSegmentedColormap
 #Load data
 subjects_tsv = pd.read_csv('DEPRESSION/participants.tsv', sep='\t')
 
-#Hyperparameters for the depression dataset: 
-embed_dim = 166
-time_length = 196
-batch_size = 32
+#Is the folder figures/depression does not exist : create it
+if not os.path.exists('figures/depression'):
+    mkdir('figures/depression')
 
 #Execute data loading
 filename = 'depression_data_loading.py'
 with open(filename, 'r') as file:
     script_content = file.read()
 exec(script_content)
+
+#Hyperparameters for the depression dataset: 
+embed_dim = BOLD_signals.shape[1]
+time_length = BOLD_signals.shape[2]
+batch_size = 32
 
 #Splitting the data into depressed and healthy
 
@@ -177,7 +181,7 @@ plot_connectivity_circle(
 )
 
 #save figure 
-fig.savefig('figures/connectogram_depressed_male.png', 
+fig.savefig('figures/depression/connectogram_depressed_male.png', 
             facecolor=fig.get_facecolor(), 
             edgecolor='none', 
             bbox_inches='tight')
@@ -206,7 +210,7 @@ plot_connectivity_circle(
 )
 
 #save figure 
-fig.savefig('figures/connectogram_depressed_female.png', 
+fig.savefig('figures/depression/connectogram_depressed_female.png', 
             facecolor=fig.get_facecolor(), 
             edgecolor='none', 
             bbox_inches='tight')
@@ -235,7 +239,7 @@ plot_connectivity_circle(
 )
 
 #save figure 
-fig.savefig('figures/connectogram_healthy_male.png', 
+fig.savefig('figures/depression/connectogram_healthy_male.png', 
             facecolor=fig.get_facecolor(), 
             edgecolor='none', 
             bbox_inches='tight')
@@ -265,7 +269,7 @@ plot_connectivity_circle(
 )
 
 #save figure 
-fig.savefig('figures/connectogram_healthy_female.png', 
+fig.savefig('figures/depression/connectogram_healthy_female.png', 
             facecolor=fig.get_facecolor(), 
             edgecolor='none', 
             bbox_inches='tight')
@@ -309,7 +313,7 @@ for i,x in Z_23546.items():
         colormap=custom_map
         )
 
-    fig.savefig('figures/connectogram_' + session + '.png', 
+    fig.savefig('figures/depression/connectogram_' + session + '.png', 
         facecolor=fig.get_facecolor(), 
         edgecolor='none', 
         bbox_inches='tight')
