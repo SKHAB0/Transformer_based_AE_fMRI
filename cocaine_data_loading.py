@@ -8,55 +8,42 @@ import scipy.io
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import LabelEncoder
 
 seed = 2351564
 
-def load_depression_data(batch_size = 32):
+def load_COCAINE_data(batch_size = 32):
 
-    subjects = pd.read_csv('DEPRESSION/participants.tsv', sep='\t')
+    subjects_tsv = pd.read_csv('COCAINE/participants.tsv', sep='\t')
 
     #Retrieve BOLD signals from fmri data
     BOLD_signals = {}
     avg_BOLD_signals = {}
-    sessions = {}
-
-    labels = []
     sex = []
+    labels = []
 
-    #Auxiliary function
-    def is_depressed(sess):
-        for session in sess:
-            if session not in ["ses-v1", "ses-v4"]:
-                return True
-        return False
-
-    for m in tqdm(range(len(subjects))):
-        row = subjects.iloc[m]
+    for _, row in tqdm(subjects_tsv.iterrows()):
         subject = row['participant_id']
-        subfolders = os.listdir('DEPRESSION/'+subject)
-        sessions[subject] = sorted([subfolder for subfolder in subfolders if subfolder.startswith('ses')])
-        bool = is_depressed(sessions[subject])
-        for session in sessions[subject]:
-        #session = sessions[subject][0]
-            #print(session)
-            for n_echo in range(1,5):
-                path = 'DEPRESSION/'+subject+'/'+session+'/BOLD_time_series_echo-'+str(n_echo)+'_166.mat'
-                try: 
-                    BOLD_signals[subject+'_' + session + '_echo-'+str(n_echo)] = scipy.io.loadmat(path)
-                    labels.append(bool)
-                    sex.append(row['sex'])
-                except:
-                    #print('Error loading file: ', path)
-                    continue
+        path = 'COCAINE/'+subject+'/BOLD_time_series.mat'
+        try: 
+            group = row['group']
+            if not np.isnan(group):
+                BOLD_signals[subject] = scipy.io.loadmat(path)
+                labels.append(row['group'])
+                sex.append(row['sex'])
+            else :
+                continue
+        except:
+            continue
 
     keys = list(BOLD_signals.keys())
 
     for id in keys :
         BOLD_signals[id] = BOLD_signals[id]['all_time_series'][0]
 
-    #results = dict(zip(sessions.keys(), map(is_depressed, sessions.values())))
+    numerical_labels = LabelEncoder().fit_transform(labels)
 
-    labels_tensor = torch.tensor(labels)
+    labels_tensor = torch.tensor(numerical_labels)
     #sex_tensor = torch.tensor(sex)
 
     error_voxels = []
@@ -87,8 +74,6 @@ def load_depression_data(batch_size = 32):
     data_normalized = (data_array - means) / (stds + 1e-8) #1e-8 is added to avoid dividing by zero 
     data_normalized = np.swapaxes(data_normalized, 1, 2) #So that the time dimension remains the same and 116-length vectors are presented as input to the model
 
-    is_men = np.array(sex) == 'M'
-
 
     train_data, test_data, train_labels, test_labels = train_test_split(data_normalized, labels_tensor, test_size=0.2, random_state=seed, stratify=labels_tensor)
     train_data, val_data, train_labels, val_labels = train_test_split(train_data, train_labels, test_size=0.25, random_state=seed, stratify=train_labels)
@@ -100,7 +85,6 @@ def load_depression_data(batch_size = 32):
     #Creating the objects 
     globals()['BOLD_signals'] = data_array[:,:,10:] #Remove the 10 first timesteps 
     globals()['labels'] = labels_tensor
-    globals()['is_men'] = is_men
     globals()['train_loader'] = train_loader
     globals()['val_loader'] = val_loader
     globals()['test_loader'] = test_loader
@@ -112,9 +96,11 @@ def load_depression_data(batch_size = 32):
     globals()['test_labels'] = test_labels
     globals()['batch_size'] = batch_size
     globals()['subjects'] = subjects
+    globals()['subjects_tsv'] = subjects_tsv
 
 
-load_depression_data()
+
+load_COCAINE_data()
 
 
 
