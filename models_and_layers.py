@@ -346,12 +346,12 @@ class Autocorr_TransformerAutoencoder(nn.Module):
         self.c = nn.Parameter(torch.tensor(0.1))
         self.K = nn.Parameter(torch.tensor(0.1))
 
-    def forward(self, x, mask):
+    def forward(self, x, mask = None):
         encoded_x = self.encoder(x, mask) #encoding
         output = self.decoder(encoded_x, mask) #decoding
         return output, encoded_x
     
-    def encode(self, x, mask):
+    def encode(self, x, mask = None):
         encoded_x = self.encoder(x, mask) # Passing data through encoder
         return encoded_x
 
@@ -474,7 +474,7 @@ class Decomposition_TransformerBlock(nn.Module):
             nn.Linear(forward_expansion * embed_size, embed_size)
         )
 
-        self.decomposition(self, kernel_size=kernel_size)
+        self.decomposition = DecompositionLayer(kernel_size=kernel_size)
         self.feed_forward_projection = nn.Sequential(
             nn.Linear(embed_size, forward_expansion * embed_size), # Dimension: [forward_expansion * embed_size]
             #Permute(0, 2, 1), # Permute dimensions if needed

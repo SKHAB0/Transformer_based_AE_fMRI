@@ -81,6 +81,16 @@ def load_depression_data(batch_size = 32):
     data_list = list(avg_BOLD_signals.values())
     data_array = np.stack(data_list, axis=0)
 
+    #Remove faulty voxels
+
+    nan_mask = np.isnan(data_array)  # nan_mask will have the same shape as BOLD_signals
+
+    # Find the indices where NaNs are located
+    nan_indices = np.argwhere(nan_mask)
+    faulty_voxels = np.unique(nan_indices[:, 1])
+
+    data_array = np.delete(data_array, faulty_voxels, axis=1)
+
     #Normalize data
     means = np.mean(data_array, axis=(0, 2), keepdims=True)
     stds = np.std(data_array, axis=(0, 2), keepdims=True)

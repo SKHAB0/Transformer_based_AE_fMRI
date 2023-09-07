@@ -68,11 +68,23 @@ def load_COCAINE_data(batch_size = 32):
     data_list = list(avg_BOLD_signals.values())
     data_array = np.stack(data_list, axis=0)
 
+
+    #Remove faulty voxels
+
+    nan_mask = np.isnan(data_array)  # nan_mask will have the same shape as BOLD_signals
+
+    # Find the indices where NaNs are located
+    nan_indices = np.argwhere(nan_mask)
+    faulty_voxels = np.unique(nan_indices[:, 1])
+
+    data_array = np.delete(data_array, faulty_voxels, axis=1)
+
+
     #Normalize data
     means = np.mean(data_array, axis=(0, 2), keepdims=True)
     stds = np.std(data_array, axis=(0, 2), keepdims=True)
     data_normalized = (data_array - means) / (stds + 1e-8) #1e-8 is added to avoid dividing by zero 
-    data_normalized = np.swapaxes(data_normalized, 1, 2) #So that the time dimension remains the same and 116-length vectors are presented as input to the model
+    data_normalized = np.swapaxes(data_normalized, 1, 2) #So that the time dimension remains the same and 166-length vectors are presented as input to the model
 
 
     train_data, test_data, train_labels, test_labels = train_test_split(data_normalized, labels_tensor, test_size=0.2, random_state=seed, stratify=labels_tensor)
