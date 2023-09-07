@@ -28,7 +28,7 @@ For each data folder (e.g. DEPRESSION), you can access three MATLAB scipts using
 Type the following command line : 
 
 ```bash
-matlab -r DEPRESSION/RunPreproc_1stLevel_job_func_DEPRESSION
-matlab -r DEPRESSION/RunPreproc_1stLevel_job_anat_DEPRESSION
-matlab -r DEPRESSION/BOLD_extraction_DEPRESSION
+matlab -r RunPreproc_1stLevel_job_func_DEPRESSION
+matlab -r RunPreproc_1stLevel_job_anat_DEPRESSION
+matlab -r BOLD_extraction_DEPRESSION
 ```
