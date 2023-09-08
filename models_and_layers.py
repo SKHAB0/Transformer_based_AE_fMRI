@@ -92,7 +92,6 @@ class MultiheadAttention(nn.Module): #########Standard layers
         return self.fc_out(out)
 
 class seasonal_NormalizationLayer(nn.Module):
-    """Normalization layer for seasonal part of the series"""
     def __init__(self, channels):
         super(seasonal_NormalizationLayer, self).__init__()
         self.layernorm = nn.LayerNorm(channels)
@@ -103,9 +102,6 @@ class seasonal_NormalizationLayer(nn.Module):
         return (x_hat - bias)
 
 class AutoCorrelation(nn.Module):
-    """
-    This block replaces the self-attention family mechanism seamlessly.
-    """
     def __init__(self, mask_flag=True, factor=1, scale=None, attention_dropout=0.1, output_attention=False):
         super(AutoCorrelation, self).__init__()
         self.factor = factor
