@@ -32,3 +32,9 @@ matlab -r RunPreproc_1stLevel_job_func_DEPRESSION
 matlab -r RunPreproc_1stLevel_job_anat_DEPRESSION
 matlab -r BOLD_extraction_DEPRESSION
 ```
+
+For each dataset, EDA_***.py contains the exploratory data analysis, metrics and plots that have been shared on the Msc. thesis report. 
+
+The file model_and_layers.py contains core modules that have been used to build the three different encoder heads : Autocorrelation head using the Autoformer model, Decomposition head using Attention heads and a Decomposition layer, and a standard implementation of Attention transformers. 
+
+The python files names ***_study.py are related to the dataset ***, and are defining for each dataset the physical loss, training loop, bayesian optimization loop and models, that have been produced alongside this study. 
