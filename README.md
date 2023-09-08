@@ -33,7 +33,11 @@ matlab -r RunPreproc_1stLevel_job_anat_DEPRESSION
 matlab -r BOLD_extraction_DEPRESSION
 ```
 
-For each dataset, EDA_***.py contains the exploratory data analysis, metrics and plots that have been shared on the Msc. thesis report. 
+# Exploratory data analysis
+
+For each dataset, EDA_***.py contains the exploratory data analysis, metrics and plots that have been shared on the Msc. thesis report (e.g. produces connectograms, computes functional connectivities ...)
+
+# Model definition and fine-tuning
 
 The file model_and_layers.py contains core modules that have been used to build the three different encoder heads : Autocorrelation head using the Autoformer model, Decomposition head using Attention heads and a Decomposition layer, and a standard implementation of Attention transformers. 
 
